@@ -1,0 +1,108 @@
+-- SELECT *
+-- FROM `case-study-351115.covid.CovidDeaths`
+-- ORDER BY 3, 4
+-- LIMIT 10;
+
+
+-- SELECT *
+-- FROM `case-study-351115.covid.CovidVaccinations`
+-- ORDER BY 3, 4
+-- LIMIT 10;
+
+-- SELECT Data that we want to analyze
+
+SELECT Location, date, total_cases, new_cases, total_deaths, population
+FROM `case-study-351115.covid.CovidDeaths`
+ORDER BY 1, 2;
+
+--Examine Total Cases Vs Total Deaths
+--Shows likelihood of dying if yuo contract Covid in your country
+SELECT Location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 as percentage_deaths
+FROM `case-study-351115.covid.CovidDeaths`;
+
+-- Looking at Total Cases vs Population
+SELECT Location, date, total_cases, population, (total_cases/population)*100,5 as percentage_cases
+FROM `case-study-351115.covid.CovidDeaths`
+WHERE Location like "%States%";
+
+-- Looking at countries with higest infection rate compared to population
+SELECT Location, population, MAX(total_cases) as highest_infection_count, (MAX(total_cases)/population)*100 as max_infection_rate
+FROM `case-study-351115.covid.CovidDeaths`
+GROUP BY 1, 2
+ORDER BY 4 desc;
+
+-- Showing the countries Highest Death Count Per Population
+
+SELECT Location, population, MAX(cast(total_deaths as int)) as highest_death_count, (MAX(total_deaths)/population)*100 as percentage_population_died
+FROM `case-study-351115.covid.CovidDeaths`
+GROUP BY 1, 2
+ORDER BY 4 desc;
+
+
+-- Let's break things down by continent
+
+SELECT continent, MAX(cast(total_deaths as int)) as highest_death_count
+FROM `case-study-351115.covid.CovidDeaths`
+WHERE continent is not null
+GROUP BY 1
+ORDER BY 2 desc;
+
+
+-- Showing the continents with the highest death count per population
+
+SELECT continent, MAX(cast(total_deaths as int)) as highest_death_count
+FROM `case-study-351115.covid.CovidDeaths`
+WHERE continent is not null
+GROUP BY 1
+ORDER BY 2 desc;
+
+
+-- Global numbers
+
+Select date, SUM(new_cases) AS total_new_cases, SUM(CAST(new_deaths as int)) AS total_new_deaths, ( SUM(CAST(new_deaths as int))/ SUM(new_cases))*100 AS death_percentages
+FROM `case-study-351115.covid.CovidDeaths`
+WHERE continent is not null 
+GROUP BY date
+order by 1, 2;
+
+-- Joining Vaccinations and Deaths
+
+SELECT *
+FROM `case-study-351115.covid.CovidDeaths` as d
+JOIN `case-study-351115.covid.CovidVaccinations` as v
+ON  d.location = v.location and d.date = v.date;
+
+-- Looking at Global Population vs  Global vaccination
+SELECT d.continent, d.location, d.date, d.population, v.new_vaccinations, SUM(CAST(v.new_vaccinations as int)) OVER (PARTITION BY d.location ORDER BY d.location, d.date) as rolling_count_vaccinations
+FROM `case-study-351115.covid.CovidDeaths` as d
+  JOIN `case-study-351115.covid.CovidVaccinations` as v
+  ON  d.location = v.location and d.date = v.date
+WHERE d.continent is not null
+ORDER BY 2, 3;
+
+-- Looking at vacination rate per country
+WITH rolling_vaccinations AS (SELECT d.continent, d.location, d.date, d.population, v.new_vaccinations, SUM(CAST(v.new_vaccinations as int)) OVER (PARTITION BY d.location ORDER BY d.location, d.date) as rolling_count_vaccinations
+FROM `case-study-351115.covid.CovidDeaths` as d
+  JOIN `case-study-351115.covid.CovidVaccinations` as v
+  ON  d.location = v.location and d.date = v.date
+WHERE d.continent is not null
+ORDER BY 2, 3)
+SELECT location, (Max(rolling_count_vaccinations)/MAX(population))*100 as vaccinatio_rate
+FROM rolling_vaccinations
+GROUP BY 1
+ORDER BY 1,2;
+
+
+--CREATE VIEW TestView AS
+--WITH rolling_vaccinations AS (SELECT d.continent, d.location, d.date, d.population, v.new_vaccinations, SUM(CAST(v.new_vaccinations as int)) OVER (PARTITION BY d.location ORDER BY d.location, d.date) as rolling_count_vaccinations
+--FROM `case-study-351115.covid.CovidDeaths` as d
+  --JOIN `case-study-351115.covid.CovidVaccinations` as v
+  --ON  d.location = v.location and d.date = v.date
+--WHERE d.continent is not null
+--ORDER BY 2, 3)
+--SELECT location, (Max(rolling_count_vaccinations)/MAX(population))*100 as vaccinatio_rate
+--FROM rolling_vaccinations
+--GROUP BY 1
+--ORDER BY 1,2;
+
+
